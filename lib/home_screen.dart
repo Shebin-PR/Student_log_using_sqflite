@@ -12,7 +12,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _myFormkey = GlobalKey<FormState>();
+
   String searchText = "";
+  var ind;
 
   List<DataModel> datas = [];
 
@@ -72,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onChanged: (value) {
                       setState(() {
                         searchText = value;
+                        print(searchText);
                       });
                     },
                     decoration: const InputDecoration(
@@ -90,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               .contains(searchText.toLowerCase()))
                           .toList();
                   return result.isEmpty
-                      ? Text("No result Found")
+                      ? Text("No results Found")
                       : Expanded(
                           flex: 1,
                           child: Container(
@@ -104,12 +108,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.only(top: 30),
                               child: ListView.builder(
                                   itemCount: result.length,
-                                  itemBuilder: (context, index) => DataCard(
-                                      data: datas[index],
-                                      edit: edit,
-                                      index: index,
-                                      delete: delete,
-                                      result: result[index])),
+                                  itemBuilder: (context, index) {
+                                    var getIndex = datas.where((a) =>
+                                        a.name.contains(result[index].name));
+                                    ind = datas.indexOf(getIndex.first);
+
+                                    return DataCard(
+                                        data: datas[index],
+                                        edit: edit,
+                                        index: ind,
+                                        delete: delete,
+                                        result: result[index]);
+                                  }),
                             ),
                           ),
                         );
@@ -138,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Scaffold addStudents(BuildContext context) {
+  addStudents(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.blue[800],
       appBar: PreferredSize(
@@ -171,23 +181,43 @@ class _HomeScreenState extends State<HomeScreen> {
               child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Form(
+                    key: _myFormkey,
                     child: Column(
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(30),
                           child: TextFormField(
-                              controller: nameController,
-                              decoration: InputDecoration(
-                                  labelText: 'Name',
-                                  hintText: 'Enter student name.',
-                                  border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10.0)))),
+                            controller: nameController,
+                            decoration: InputDecoration(
+                                labelText: 'Name',
+                                hintText: 'Enter student name.',
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10.0))),
+                            validator: (value) {
+                              if (value!.isNotEmpty && value.length > 2) {
+                                return null;
+                              } else if (value.length < 3 && value.isNotEmpty) {
+                                return "min 3 characters";
+                              } else {
+                                return "Name Required";
+                              }
+                            },
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(30),
                           child: TextFormField(
+                              keyboardType: TextInputType.number,
                               controller: dobController,
+                              validator: (value) {
+                                if (value!.isNotEmpty && value.length == 5) {
+                                  return null;
+                                } else if (value == "") {
+                                  return " required field";
+                                } else {
+                                  return "Required no 5";
+                                }
+                              },
                               decoration: InputDecoration(
                                   labelText: 'RegNo',
                                   hintText: 'Enter student RegNO',
@@ -198,18 +228,38 @@ class _HomeScreenState extends State<HomeScreen> {
                         Padding(
                           padding: const EdgeInsets.all(30),
                           child: TextFormField(
-                              controller: ageController,
-                              decoration: InputDecoration(
-                                  labelText: 'Age',
-                                  hintText: 'Enter student age',
-                                  border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10.0)))),
+                            controller: ageController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Age',
+                              hintText: 'Enter student age',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value!.isNotEmpty) {
+                                return null;
+                              } else {
+                                return "Age Required";
+                              }
+                            },
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(30),
                           child: TextFormField(
+                              validator: (value) {
+                                if (value!.isNotEmpty && value.length == 10) {
+                                  return null;
+                                } else if (value == "") {
+                                  return " required field";
+                                } else {
+                                  return "Required no 10";
+                                }
+                              },
                               controller: domainController,
+                              keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                   labelText: 'Phone',
                                   hintText: 'Enter student Phone Number',
@@ -231,7 +281,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (image != null) {
                     imagePath = image.path;
                   }
-                  print(image!.path);
+                  return null;
+                  // print(image!.path);
                 },
                 child: Text('Pic')),
           ],
@@ -247,31 +298,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.black,
                 child: const Icon(Icons.done),
                 onPressed: () async {
-                  DataModel dataLocal = DataModel(
-                      name: nameController.text,
-                      dob: dobController.text,
-                      age: ageController.text,
-                      domain: domainController.text,
-                      imagePath: imagePath);
+                  if (_myFormkey.currentState!.validate()) {
+                    DataModel dataLocal = DataModel(
+                        name: nameController.text,
+                        dob: dobController.text,
+                        age: ageController.text,
+                        domain: domainController.text,
+                        imagePath: imagePath);
 
-                  db.insertData(dataLocal);
-                  await getData();
-                  dataLocal.id = datas[datas.length - 1].id! + 1;
+                    db.insertData(dataLocal);
+                    await getData();
+                    dataLocal.id = datas[datas.length - 1].id! + 1;
 
-                  setState(() {
-                    // datas.add(dataLocal);
-                  });
+                    setState(() {
+                      // datas.add(dataLocal);
+                    });
 
-                  nameController.clear();
-                  dobController.clear();
-                  ageController.clear();
-                  domainController.clear();
-                  // Navigator.pushReplacement(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //         // ignore: prefer_const_constructors
-                  //         builder: (context) => HomeScreen()));
-                  Navigator.pop(context);
+                    nameController.clear();
+                    dobController.clear();
+                    ageController.clear();
+                    domainController.clear();
+                    Navigator.pop(context);
+                  }
                 });
           }),
         ),
@@ -396,9 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 newData.dob = dobController.text;
                 newData.age = ageController.text;
                 newData.domain = domainController.text;
-
                 db.update(newData, newData.id!);
-
                 setState(() {});
 
                 // Navigator.pushReplacement(context,
